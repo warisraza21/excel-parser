@@ -8,6 +8,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.poi.ss.SpreadsheetVersion;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.ss.util.AreaReference;
 import org.apache.poi.ss.util.CellReference;
@@ -25,7 +26,7 @@ public class ExcelReader {
     static {
         objectMapper.enable(SerializationFeature.INDENT_OUTPUT);
     }
-    
+
     public static void testExcel(String filePath) {
         try (FileInputStream fis = new FileInputStream(filePath);
              Workbook workbook = new XSSFWorkbook(fis)) {
@@ -37,9 +38,9 @@ public class ExcelReader {
 
                 log.info("Sheet Name : {}", xssfSheet.getSheetName());
 
-                List<AreaReference> reservedAreas = getReservedAreas(xssfSheet, workbook);
+                List<AreaReference> reservedAreas = getReservedAreas(xssfSheet, workbook.getSpreadsheetVersion());
+                detectCharts(xssfSheet);
 
-                log.info("Processing Unstructured Data");
                 List<CellData> list = new ArrayList<>();
                 for (Row row : xssfSheet) {
                     for (Cell cell : row) {
@@ -60,26 +61,40 @@ public class ExcelReader {
         }
     }
 
-    private static List<AreaReference> getReservedAreas(XSSFSheet sheet, Workbook workbook) {
+    private static void detectCharts(XSSFSheet sheet) {
+        XSSFDrawing drawing = sheet.getDrawingPatriarch();
+        if (drawing == null || drawing.getCharts().isEmpty()) {
+            log.info("No charts found in sheet: {}", sheet.getSheetName());
+        } else {
+            List<XSSFChart> charts = drawing.getCharts();
+            log.info("Found {} chart(s) in sheet: {}", charts.size(), sheet.getSheetName());
+            for (XSSFChart chart : charts) {
+                log.info("Chart Title: {}", chart.getPackagePart().getPartName().getName());
+            }
+        }
+    }
+
+    private static List<AreaReference> getReservedAreas(XSSFSheet sheet, SpreadsheetVersion spreadsheetVersion) {
         List<AreaReference> reservedAreas = new ArrayList<>();
 
         // Process normal tableData
         for (XSSFTable table : sheet.getTables()) {
             AreaReference areaReference = table.getArea();
+            printTableData(sheet, areaReference, table.getName());
             reservedAreas.add(areaReference);
-            log.info("Table: {} added to reserved areas {}", table.getName(), areaReference);
+            log.info("Table: {} added to reserved areas [{}:{}]", table.getName(), areaReference.getFirstCell().formatAsString(), areaReference.getLastCell().formatAsString());
         }
 
         // Process pivot tableData
         for (XSSFPivotTable pivotTable : sheet.getPivotTables()) {
             AreaReference areaReference = new AreaReference(
                     pivotTable.getCTPivotTableDefinition().getLocation().getRef(),
-                    workbook.getSpreadsheetVersion()
+                    spreadsheetVersion
             );
+            printTableData(sheet, areaReference, pivotTable.getCTPivotTableDefinition().getName());
             reservedAreas.add(areaReference);
-            log.info("Pivot Table of Sheet : {} added to reserved areas {}", sheet.getSheetName(), areaReference);
+            log.info("Pivot Table of Sheet : {} added to reserved areas [{}:{}]", sheet.getSheetName(), areaReference.getFirstCell().formatAsString(), areaReference.getLastCell().formatAsString());
         }
-
         return reservedAreas;
     }
 
@@ -128,6 +143,43 @@ public class ExcelReader {
                 String json = objectMapper.writeValueAsString(data);
                 log.info("Unstructured Data:\n{}", json);
             }
+        }
+    }
+
+    public static void printTableData(XSSFSheet sheet, AreaReference areaReference, String tableName) {
+        CellReference[] cellReferences = areaReference.getAllReferencedCells();
+
+        StringBuilder tableData = new StringBuilder("Table Data:\n");
+        for (CellReference cellRef : cellReferences) {
+            Row row = sheet.getRow(cellRef.getRow());
+            if (row != null) {
+                Cell cell = row.getCell(cellRef.getCol());
+                if (cell != null) {
+                    tableData.append(getCellValue(cell)).append("\t");
+                }
+            }
+            if (cellRef.getCol() == areaReference.getLastCell().getCol()) {
+                tableData.append("\n");
+            }
+        }
+        log.info("{} {}",tableName,tableData);
+    }
+    private static String getCellValue(Cell cell) {
+        switch (cell.getCellType()) {
+            case STRING:
+                return cell.getStringCellValue();
+            case NUMERIC:
+                if (DateUtil.isCellDateFormatted(cell)) {
+                    return cell.getDateCellValue().toString();
+                } else {
+                    return String.valueOf(cell.getNumericCellValue());
+                }
+            case BOOLEAN:
+                return String.valueOf(cell.getBooleanCellValue());
+            case FORMULA:
+                return cell.getCellFormula();
+            default:
+                return "";
         }
     }
 }
