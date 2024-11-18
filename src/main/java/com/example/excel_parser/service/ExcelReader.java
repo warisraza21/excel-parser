@@ -33,6 +33,8 @@ public class ExcelReader {
 
             log.info("Total sheets: {}", workbook.getNumberOfSheets());
 
+            FormulaEvaluator formulaEvaluator = workbook.getCreationHelper().createFormulaEvaluator();
+
             for (Sheet sheet : workbook) {
                 XSSFSheet xssfSheet = (XSSFSheet) sheet;
 
@@ -45,7 +47,7 @@ public class ExcelReader {
                 for (Row row : xssfSheet) {
                     for (Cell cell : row) {
                         if (!isWithinReservedArea(cell, reservedAreas)) {
-                            CellData cellData = extractCellData(cell);
+                            CellData cellData = extractCellData(cell, formulaEvaluator);
                             if(cellData != null) list.add(cellData);
                         }
                     }
@@ -118,17 +120,20 @@ public class ExcelReader {
                 col >= start.getCol() && col <= end.getCol();
     }
 
-    private static CellData extractCellData(Cell cell) {
+    private static CellData extractCellData(Cell cell, FormulaEvaluator formulaEvaluator) {
         CellData cellData = null;
         if (cell != null && !cell.toString().trim().isEmpty()) {
             cellData = new CellData(cell.getRowIndex(), cell.getColumnIndex());
-            cellData.setValue(cell.toString());
             if (cell.getCellType() == CellType.FORMULA) {
                 cellData.setFormula(cell.getCellFormula());
+                cellData.setValue(getCellValue(formulaEvaluator.evaluateInCell(cell)));
+            } else {
+                cellData.setValue(getCellValue(cell));
             }
         }
         return cellData;
     }
+
 
     public static void printClusteredData(ProcessedSheet processedSheet) throws JsonProcessingException {
         if (processedSheet.tableData() != null && !processedSheet.tableData().isEmpty()) {
