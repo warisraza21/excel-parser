@@ -11,7 +11,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-
 @Slf4j
 public class ExcelReader {
 
@@ -25,89 +24,51 @@ public class ExcelReader {
                 XSSFSheet xssfSheet = (XSSFSheet) sheet;
 
                 log.info("Sheet Name : {}", xssfSheet.getSheetName());
-                log.info("Sheet : {} contains total table(s) : {}", xssfSheet.getTables().size());
-                log.info("Sheet : {} contains total pivot table(s) : {}", xssfSheet.getPivotTables().size());
 
-                // Reserved areas
-                List<AreaReference> reservedAreas = new ArrayList<>();
-
-                // Process normal tables
-                for (XSSFTable table : xssfSheet.getTables()) {
-                    log.info("Processing Table: {}", table.getName());
-                    log.info("Table Display Name: {}", table.getDisplayName());
-
-                    AreaReference areaReference = table.getArea();
-                    reservedAreas.add(areaReference); // Add table area to reserved areas
-                    log.info("Area of table: {}", areaReference);
-
-                    CellReference[] cellReferences = areaReference.getAllReferencedCells();
-
-                    StringBuilder tableData = new StringBuilder("Table Data:\n");
-                    for (CellReference cellRef : cellReferences) {
-                        Row row = xssfSheet.getRow(cellRef.getRow());
-                        if (row != null) {
-                            Cell cell = row.getCell(cellRef.getCol());
-                            if (cell != null) {
-                                tableData.append(getCellValue(cell)).append("\t");
-                            }
-                        }
-                        if (cellRef.getCol() == areaReference.getLastCell().getCol()) {
-                            tableData.append("\n");
-                        }
-                    }
-                    log.info("\n{}", tableData);
-                }
-
-                for (XSSFPivotTable pivotTable : xssfSheet.getPivotTables()) {
-                    log.info("Processing Pivot Table");
-
-                    AreaReference sourceArea = new AreaReference(
-                            pivotTable.getCTPivotTableDefinition().getLocation().getRef(),
-                            workbook.getSpreadsheetVersion()
-                    );
-                    reservedAreas.add(sourceArea);
-                    log.info("Pivot Table Area: {}", sourceArea);
-
-                    CellReference[] cellReferences = sourceArea.getAllReferencedCells();
-
-                    StringBuilder pivotSourceData = new StringBuilder("Pivot Table Data:\n");
-                    for (CellReference cellRef : cellReferences) {
-                        Row row = xssfSheet.getRow(cellRef.getRow());
-                        if (row != null) {
-                            Cell cell = row.getCell(cellRef.getCol());
-                            if (cell != null) {
-                                pivotSourceData.append(getCellValue(cell)).append("\t");
-                            }
-                        }
-                        if (cellRef.getCol() == sourceArea.getLastCell().getCol()) {
-                            pivotSourceData.append("\n");
-                        }
-                    }
-                    log.info("\n{}", pivotSourceData);
-                }
+                List<AreaReference> reservedAreas = getReservedAreas(xssfSheet, workbook);
 
                 log.info("Processing Unstructured Data");
-//                for (Row row : xssfSheet) {
-//                    for (Cell cell : row) {
-//                        if (!isWithinReservedArea(cell, reservedAreas)) {
-//                            log.info("Unstructured Data - Cell [{}]: {}", new CellReference(cell).formatAsString(), getCellValue(cell));
-//                        }
-//                    }
-//                }
-
-                XSSFDrawing drawing = xssfSheet.getDrawingPatriarch();
-
-                if (drawing != null) {
-                    List<XSSFChart> charts = drawing.getCharts();
-                    for (XSSFChart chart : charts) {
-                        String title = (chart.getTitle() != null ? chart.getTitle().toString(): "Untitled");
-                        log.info("Chart Title : {}", title);
+                List<ExcelProcessor.CellData> list = new ArrayList<>();
+                for (Row row : xssfSheet) {
+                    for (Cell cell : row) {
+                        if (!isWithinReservedArea(cell, reservedAreas)) {
+                            ExcelProcessor.CellData cellData = extractCellData(cell);
+                            if(cellData != null) list.add(cellData);
+                        }
                     }
+                }
+
+                if(!list.isEmpty()){
+                    ExcelProcessor.ProcessedSheet processedSheet =  ExcelProcessor.processSheet(list);
+                    ExcelProcessor.test(processedSheet);
                 }
             }
         } catch (IOException e) {
             log.error("Error processing Excel file", e);
         }
+    }
+
+    private static List<AreaReference> getReservedAreas(XSSFSheet sheet, Workbook workbook) {
+        List<AreaReference> reservedAreas = new ArrayList<>();
+
+        // Process normal tables
+        for (XSSFTable table : sheet.getTables()) {
+            AreaReference areaReference = table.getArea();
+            reservedAreas.add(areaReference);
+            log.info("Table: {} added to reserved areas {}", table.getName(), areaReference);
+        }
+
+        // Process pivot tables
+        for (XSSFPivotTable pivotTable : sheet.getPivotTables()) {
+            AreaReference areaReference = new AreaReference(
+                    pivotTable.getCTPivotTableDefinition().getLocation().getRef(),
+                    workbook.getSpreadsheetVersion()
+            );
+            reservedAreas.add(areaReference);
+            log.info("Pivot Table with parent name {} added to reserved areas {}", pivotTable.getCTPivotTableDefinition().getName(), areaReference);
+        }
+
+        return reservedAreas;
     }
 
     private static boolean isWithinReservedArea(Cell cell, List<AreaReference> reservedAreas) {
@@ -147,5 +108,17 @@ public class ExcelReader {
             default:
                 return "";
         }
+    }
+
+    private static ExcelProcessor.CellData extractCellData(Cell cell) {
+        ExcelProcessor.CellData cellData = null;
+        if (cell != null && !cell.toString().trim().isEmpty()) {
+            cellData = new ExcelProcessor.CellData(cell.getRowIndex(), cell.getColumnIndex());
+            cellData.setValue(cell.toString());
+            if (cell.getCellType() == CellType.FORMULA) {
+                cellData.setFormula(cell.getCellFormula());
+            }
+        }
+        return cellData;
     }
 }

@@ -1,72 +1,46 @@
 package com.example.excel_parser;
 
 import lombok.Data;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.math3.ml.clustering.Cluster;
 import org.apache.commons.math3.ml.clustering.DBSCANClusterer;
 import org.apache.commons.math3.ml.clustering.DoublePoint;
-import org.apache.poi.ss.usermodel.*;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-
-import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
 
 import java.util.*;
 
 @Slf4j
-public class ExcelProcessor {
+public class ExcelProcessor  {
 
-    public static void test(String filePath) throws IOException {
-        // Load the Excel file
-        FileInputStream file = new FileInputStream(filePath);
-        Workbook workbook = new XSSFWorkbook(file);
-       for (Sheet sheet : workbook) {
+    public static void test(ProcessedSheet processedSheet) throws IOException {
+        // Initialize Jackson ObjectMapper
+        ObjectMapper objectMapper = new ObjectMapper();
+        objectMapper.enable(SerializationFeature.INDENT_OUTPUT); // Enable pretty printing
 
-           // Step 1: Extract all cell data
-           List<CellData> cells = extractCellData(sheet);
-
-           // Step 2: Identify structured tables and unstructured data
-           ProcessedSheet processedSheet = processSheet(cells);
-
-           log.info("Processing sheet {}", sheet.getSheetName());
-           // Step 3: Print results
-           log.info("Detected Structured Tables:");
-           for (Table table : processedSheet.tables()) {
-               log.info("Table : {}", table);
-           }
-
-           log.info("\nDetected Unstructured Data:");
-           for (UnstructuredData data : processedSheet.unstructuredData()) {
-               log.info("Unstructured table : {}", data);
-           }
-       }
-
-        workbook.close();
-    }
-
-    // Step 1: Extract all cells
-    private static List<CellData> extractCellData(Sheet sheet) {
-        List<CellData> cellDataList = new ArrayList<>();
-        for (Row row : sheet) {
-            for (Cell cell : row) {
-                if (cell != null && !cell.toString().trim().isEmpty()) {
-                    CellData cellData = new CellData(cell.getRowIndex(), cell.getColumnIndex());
-                    cellData.setValue(cell.toString());
-                    if (cell.getCellType() == CellType.FORMULA) {
-                        cellData.setFormula(cell.getCellFormula());
-                    }
-                    cellDataList.add(cellData);
-                }
+        if (processedSheet.tables() != null && !processedSheet.tables.isEmpty()) {
+            for (Table table : processedSheet.tables()) {
+                String json = objectMapper.writeValueAsString(table);
+                log.info("Structured Table:\n{}", json);
             }
         }
-        return cellDataList;
+
+        if (processedSheet.unstructuredData() != null && !processedSheet.unstructuredData().isEmpty()) {
+            for (UnstructuredData data : processedSheet.unstructuredData()) {
+                String json = objectMapper.writeValueAsString(data);
+                log.info("Unstructured Data:\n{}", json);
+            }
+        }
     }
 
+
     // Step 2: Process sheet into structured and unstructured data
-    private static ProcessedSheet processSheet(List<CellData> cells) {
+    public static ProcessedSheet processSheet(List<CellData> cells) {
         // Convert cells to points for clustering
         List<DoublePoint> points = new ArrayList<>();
         for (CellData cell : cells) {
@@ -104,7 +78,7 @@ public class ExcelProcessor {
     }
 
     @Data
-    static class CellData {
+    static class CellData implements Serializable{
         private final int rowIndex;
         private final int columnIndex;
         private String value;
@@ -127,7 +101,8 @@ public class ExcelProcessor {
     }
 
     // Helper class to represent a table
-    static class Table {
+    @Data
+    static class Table implements Serializable{
         private final List<CellData> cells = new ArrayList<>();
 
         public void addCell(CellData cell) {
@@ -143,17 +118,17 @@ public class ExcelProcessor {
     }
 
     // Helper class to represent unstructured data
-    record UnstructuredData(CellData cellData) {
-            @Override
-            public String toString() {
-                return "UnstructuredData{" +
-                        "cellData=" + cellData +
-                        '}';
-            }
+    record UnstructuredData(CellData cellData) implements Serializable{
+        @Override
+        public String toString() {
+            return "UnstructuredData{" +
+                    "cellData=" + cellData +
+                    '}';
         }
+    }
 
     // Helper class to represent processed sheet data
-    record ProcessedSheet(List<Table> tables, List<UnstructuredData> unstructuredData) {
+    record ProcessedSheet(List<Table> tables, List<UnstructuredData> unstructuredData) implements Serializable{
 
     }
 }

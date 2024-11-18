@@ -13,7 +13,5 @@ public class ExcelParserApplication {
 		String filePath = "src/main/resources/static/test.xlsx";
 		SpringApplication.run(ExcelParserApplication.class, args);
 		ExcelReader.testExcel(filePath);
-//		ExcelReader1.processExcel(filePath);
-		ExcelProcessor.test(filePath);
 	}
 }
