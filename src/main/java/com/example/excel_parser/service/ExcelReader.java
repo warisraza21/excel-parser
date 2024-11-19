@@ -3,7 +3,7 @@ package com.example.excel_parser.service;
 import com.example.excel_parser.model.CellData;
 import com.example.excel_parser.model.ProcessedSheet;
 import com.example.excel_parser.model.TableData;
-import com.example.excel_parser.model.UnstructuredData;
+import com.example.excel_parser.model.NonTableData;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
@@ -189,8 +189,8 @@ public class ExcelReader {
             }
         }
 
-        if (processedSheet.unstructuredData() != null && !processedSheet.unstructuredData().isEmpty()) {
-            for (UnstructuredData data : processedSheet.unstructuredData()) {
+        if (processedSheet.nonTableData() != null && !processedSheet.nonTableData().isEmpty()) {
+            for (NonTableData data : processedSheet.nonTableData()) {
                 String json = objectMapper.writeValueAsString(data);
                 log.info("Unstructured Data:\n{}", json);
             }

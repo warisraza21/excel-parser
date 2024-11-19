@@ -3,7 +3,7 @@ package com.example.excel_parser.service;
 import com.example.excel_parser.model.CellData;
 import com.example.excel_parser.model.ProcessedSheet;
 import com.example.excel_parser.model.TableData;
-import com.example.excel_parser.model.UnstructuredData;
+import com.example.excel_parser.model.NonTableData;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.math3.ml.clustering.Cluster;
 import org.apache.commons.math3.ml.clustering.DBSCANClusterer;
@@ -44,15 +44,15 @@ public class ClusterCells {
         }
 
         // Identify unstructured data (remaining points)
-        List<UnstructuredData> unstructuredData = new ArrayList<>();
+        List<NonTableData> nonTableData = new ArrayList<>();
         for (CellData cell : cells) {
             DoublePoint point = new DoublePoint(new double[]{cell.getRowIndex(), cell.getColumnIndex()});
             if (!clusteredPoints.contains(point)) {
-                unstructuredData.add(new UnstructuredData(cell));
+                nonTableData.add(new NonTableData(cell));
             }
         }
 
-        return new ProcessedSheet(tables, unstructuredData);
+        return new ProcessedSheet(tables, nonTableData);
     }
 
 }
