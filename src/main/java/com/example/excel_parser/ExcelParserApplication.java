@@ -9,7 +9,7 @@ public class ExcelParserApplication {
 
 	public static void main(String[] args) {
 
-		String filePath = "src/main/resources/static/test.xlsx";
+		String filePath = "src/main/resources/static/dropdown.xlsx";
 		SpringApplication.run(ExcelParserApplication.class, args);
 		ExcelReader.testExcel(filePath);
 	}

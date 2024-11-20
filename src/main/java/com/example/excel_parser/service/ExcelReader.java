@@ -42,7 +42,7 @@ public class ExcelReader {
                 setHiddenHeader(xssfSheet, filePath);
                 getRangesInfo(workbook, sheet.getSheetName());
 
-                log.info("Sheet Name : {}", xssfSheet.getSheetName());
+                log.info("SheetInfo Name : {}", xssfSheet.getSheetName());
 
                 List<AreaReference> reservedAreas = getReservedAreas(xssfSheet, workbook.getSpreadsheetVersion());
                 detectCharts(xssfSheet);
@@ -99,7 +99,7 @@ public class ExcelReader {
             String sourceTableName = getSourceTableName(pivotCacheDef);
             log.info("Source Table Name: {}", sourceTableName);
             String parentSheetName = getParentSheetName(pivotCacheDef);
-            log.info("Parent Table Sheet Name: {}", parentSheetName);
+            log.info("Parent Table SheetInfo Name: {}", parentSheetName);
 
             // Extract column names
             log.info("Columns:");
@@ -110,7 +110,7 @@ public class ExcelReader {
             );
             printTableData(sheet, areaReference, pivotTable.getCTPivotTableDefinition().getName());
             reservedAreas.add(areaReference);
-            log.info("Pivot Table of Sheet : {} added to reserved areas [{}:{}]", sheet.getSheetName(), areaReference.getFirstCell().formatAsString(), areaReference.getLastCell().formatAsString());
+            log.info("Pivot Table of SheetInfo : {} added to reserved areas [{}:{}]", sheet.getSheetName(), areaReference.getFirstCell().formatAsString(), areaReference.getLastCell().formatAsString());
         }
         return reservedAreas;
     }
@@ -283,7 +283,7 @@ public class ExcelReader {
                     CellReference lastCell = areaRef.getLastCell();
 
                     log.info("Range Details:");
-                    log.info("Sheet: {}", firstCell.getSheetName());
+                    log.info("SheetInfo: {}", firstCell.getSheetName());
                     log.info("Start Cell: {}", firstCell.formatAsString());
                     log.info("End Cell: {}", lastCell.formatAsString());
                 } else {
@@ -304,7 +304,7 @@ public class ExcelReader {
                         CellReference lastCell = areaRef.getLastCell();
 
                         log.info("Named Range Details:");
-                        log.info("Sheet-: {}", firstCell.getSheetName());
+                        log.info("SheetInfo-: {}", firstCell.getSheetName());
                         log.info("Start -Cell: {}", firstCell.formatAsString());
                         log.info("End -Cell: {}", lastCell.formatAsString());
                     } else {
