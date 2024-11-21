@@ -11,10 +11,10 @@ public class TableInfo {
     private int columnCount;
     private int rowCount;
     private CellRangeInfo boundaries;
+    private List<ColumnInfo> columns;
     private List<MergedCellInfo> mergedCells;
     private TableHeaders headers;
-    private List<ColumnInfo> columns;
-    private List<List<String>> sampleRowData;
+    private List<List<?>> sampleRowData;
     private TableSummaryRow summaryRow;
 }
 

@@ -40,7 +40,7 @@ public class ExcelReader {
             for (Sheet sheet : workbook) {
                 XSSFSheet xssfSheet = (XSSFSheet) sheet;
                 setHiddenHeader(xssfSheet, filePath);
-                getRangesInfo(workbook, sheet.getSheetName());
+//                getRangesInfo(workbook, sheet.getSheetName());
 
                 log.info("SheetInfo Name : {}", xssfSheet.getSheetName());
 
@@ -110,6 +110,8 @@ public class ExcelReader {
             );
             printTableData(sheet, areaReference, pivotTable.getCTPivotTableDefinition().getName());
             reservedAreas.add(areaReference);
+
+//            detectSourceRange(pivotTable);
             log.info("Pivot Table of SheetInfo : {} added to reserved areas [{}:{}]", sheet.getSheetName(), areaReference.getFirstCell().formatAsString(), areaReference.getLastCell().formatAsString());
         }
         return reservedAreas;
@@ -344,6 +346,31 @@ public class ExcelReader {
             }
         } catch (IOException e) {
             log.error("Error while writing hidden header row to file.", e);
+        }
+    }
+
+    private static void detectSourceRange(XSSFPivotTable pivotTable) {
+        try {
+            log.info("Fetching the pivot cache definition...");
+            CTPivotCacheDefinition ctPivotCacheDef = pivotTable.getPivotCacheDefinition().getCTPivotCacheDefinition();
+
+            if (ctPivotCacheDef != null) {
+                log.info("Pivot cache source is set. Inspecting...");
+                CTWorksheetSource worksheetSource = ctPivotCacheDef.getCacheSource().getWorksheetSource();
+
+                if (worksheetSource.isSetRef()) {
+                    log.info("Pivot table source reference: {}", worksheetSource.getRef());
+                } else if (worksheetSource.isSetSheet()) {
+                    log.info("Pivot table source is on sheet: {}", worksheetSource.getSheet());
+                    log.info("No direct reference available. Attempting to deduce the range...");
+                } else {
+                    log.warn("No valid reference or sheet found for the pivot table.");
+                }
+            } else {
+                log.warn("Pivot cache source is not set.");
+            }
+        } catch (Exception e) {
+            log.error("Error while detecting pivot table source: {}", e.getMessage(), e);
         }
     }
 

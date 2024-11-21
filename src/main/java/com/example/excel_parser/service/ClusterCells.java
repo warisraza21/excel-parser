@@ -1,5 +1,6 @@
 package com.example.excel_parser.service;
 
+import com.example.excel_parser.dtos.CellRangeInfo;
 import com.example.excel_parser.model.CellData;
 import com.example.excel_parser.model.ProcessedSheet;
 import com.example.excel_parser.model.TableData;
@@ -8,6 +9,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.math3.ml.clustering.Cluster;
 import org.apache.commons.math3.ml.clustering.DBSCANClusterer;
 import org.apache.commons.math3.ml.clustering.DoublePoint;
+import org.apache.poi.ss.util.CellReference;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -40,6 +43,9 @@ public class ClusterCells {
                         .filter(c -> c.getRowIndex() == (int) point.getPoint()[0] && c.getColumnIndex() == (int) point.getPoint()[1])
                         .findFirst().ifPresent(table::addCell);
             }
+            if(!table.getCells().isEmpty()){
+                calculateBoundary(table);
+            }
             tables.add(table);
         }
 
@@ -53,6 +59,30 @@ public class ClusterCells {
         }
 
         return new ProcessedSheet(tables, nonTableData);
+    }
+    private static void calculateBoundary(TableData table) {
+        int minRow = Integer.MAX_VALUE, maxRow = Integer.MIN_VALUE;
+        int minCol = Integer.MAX_VALUE, maxCol = Integer.MIN_VALUE;
+
+        for (CellData cell : table.getCells()) {
+            int rowIndex = cell.getRowIndex();
+            int colIndex = cell.getColumnIndex();
+
+            // Update boundaries
+            minRow = Math.min(minRow, rowIndex);
+            maxRow = Math.max(maxRow, rowIndex);
+            minCol = Math.min(minCol, colIndex);
+            maxCol = Math.max(maxCol, colIndex);
+        }
+
+        // Set rowCount and columnCount in the TableData
+        table.setRowCount(maxRow - minRow + 1); // Inclusive range
+        table.setColumnCount(maxCol - minCol + 1); // Inclusive range
+
+        // Use CellReference for boundary representation
+        CellReference startCell = new CellReference(minRow, minCol);
+        CellReference endCell = new CellReference(maxRow, maxCol);
+        table.setBoundaries(new CellRangeInfo(startCell.formatAsString(), endCell.formatAsString()));
     }
 
 }

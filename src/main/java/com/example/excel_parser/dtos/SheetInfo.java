@@ -13,7 +13,7 @@ public class SheetInfo {
     private int chartCounts;
     private int pivotTableCount;
     private int nonTableCount;
-    private String visibility;
+    private Boolean visibility;
     private List<TableInfo> tables;
     private List<NonTableInfo> nonTables;
     private List<PivotTableInfo> pivotTables;

@@ -6,7 +6,7 @@ import lombok.Data;
 public class PivotTableInfo {
     private String id;
     private String name;
-    private String location;
+    private CellRangeInfo boundaries;
     private PivotTableSource source;
     private PivotTableFields fields;
     private PivotTableOptions options;
