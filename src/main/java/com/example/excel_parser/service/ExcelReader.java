@@ -19,7 +19,6 @@ import org.openxmlformats.schemas.spreadsheetml.x2006.main.*;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Slf4j
 public class ExcelReader {
@@ -44,70 +43,38 @@ public class ExcelReader {
 
                 log.info("SheetInfo Name : {}", xssfSheet.getSheetName());
 
-                Set<AreaReference> reservedAreas = getReservedAreas(xssfSheet, workbook.getSpreadsheetVersion());
-                detectCharts(xssfSheet);
+                Set<AreaReference> reservedAreas = getAreaReferenceForTableAndPivotTable(xssfSheet, workbook.getSpreadsheetVersion());
+                reservedAreas.forEach(areaReference -> log.info("Reserved Area : {}",areaReference));
 
-                List<CellData> list = new ArrayList<>();
-                for (Row row : xssfSheet) {
-                    for (Cell cell : row) {
-                        if (!isWithinReservedArea(cell, reservedAreas)) {
-                            CellData cellData = extractCellData(cell);
-                            if (cellData != null) list.add(cellData);
-                        }
-                    }
-                }
-                processUnNamedRanges(xssfSheet, list);
+                int row = xssfSheet.getDimension().getLastRow() + 1;
+                int col = xssfSheet.getDimension().getLastColumn() + 1;
+                boolean[][] visited = new boolean[row][col];
+
+                markVisitedForReservedArea(visited,reservedAreas);
+                Set<AreaReference> rangesAreaReference = RectangleDetector.getRangesAreaReference(xssfSheet,visited);
+                rangesAreaReference.forEach(areaReference -> log.info("Range Area : {}",areaReference));
             }
         } catch (IOException e) {
             log.error("Error processing Excel file", e);
         }
     }
 
-    private static void detectCharts(XSSFSheet sheet) {
-        XSSFDrawing drawing = sheet.getDrawingPatriarch();
-        if (drawing == null || drawing.getCharts().isEmpty()) {
-            log.info("No charts found in sheet: {}", sheet.getSheetName());
-        } else {
-            List<XSSFChart> charts = drawing.getCharts();
-            log.info("Found {} chart(s) in sheet: {}", charts.size(), sheet.getSheetName());
-            for (XSSFChart chart : charts) {
-                log.info("Chart Title: {}", chart.getPackagePart().getPartName().getName());
-            }
-        }
-    }
-
-    private static Set<AreaReference> getReservedAreas(XSSFSheet sheet, SpreadsheetVersion spreadsheetVersion) {
+    private static Set<AreaReference> getAreaReferenceForTableAndPivotTable(XSSFSheet sheet, SpreadsheetVersion spreadsheetVersion) {
         Set<AreaReference> reservedAreas = new HashSet<>();
 
         // Process normal tableData
         for (XSSFTable table : sheet.getTables()) {
             AreaReference areaReference = table.getArea();
-            printTableData(sheet, areaReference, table.getName());
             reservedAreas.add(areaReference);
-            log.info("Table: {} added to reserved areas [{}:{}]", table.getName(), areaReference.getFirstCell().formatAsString(), areaReference.getLastCell().formatAsString());
         }
 
         // Process pivot tableData
         for (XSSFPivotTable pivotTable : sheet.getPivotTables()) {
-            CTPivotCacheDefinition pivotCacheDef = pivotTable.getPivotCacheDefinition().getCTPivotCacheDefinition();
-
-            // Extract source table name
-            String sourceTableName = getSourceTableName(pivotCacheDef);
-            log.info("Source Table Name: {}", sourceTableName);
-            String parentSheetName = getParentSheetName(pivotCacheDef);
-            log.info("Parent Table SheetInfo Name: {}", parentSheetName);
-
-            // Extract column names
-            log.info("Columns:");
-            getColumnNames(pivotCacheDef);
             AreaReference areaReference = new AreaReference(
                     pivotTable.getCTPivotTableDefinition().getLocation().getRef(),
                     spreadsheetVersion
             );
-            printTableData(sheet, areaReference, pivotTable.getCTPivotTableDefinition().getName());
             reservedAreas.add(areaReference);
-
-            log.info("Pivot Table of SheetInfo : {} added to reserved areas [{}:{}]", sheet.getSheetName(), areaReference.getFirstCell().formatAsString(), areaReference.getLastCell().formatAsString());
         }
         return reservedAreas;
     }
@@ -269,17 +236,22 @@ public class ExcelReader {
         }
     }
 
-    private static void processUnNamedRanges(XSSFSheet xssfSheet, List<CellData> list) throws JsonProcessingException {
-        if (!list.isEmpty()) {
-            ProcessedSheet processedSheet = ClusterCells.clusterCellsData(list, xssfSheet);
-            for (TableData tableData : processedSheet.tableData()) {
-                List<int[][]> data = RectangleDetector.detectRectangles(xssfSheet, tableData.getAreaReference());
-                for (int[][] boundary : data){
-                    // Use CellReference for boundary representation
-                    CellReference startCell = new CellReference(boundary[0][0], boundary[0][1]);
-                    CellReference endCell = new CellReference(boundary[1][0], boundary[1][1]);
-                    AreaReference areaReference = new AreaReference(startCell,endCell,xssfSheet.getWorkbook().getSpreadsheetVersion());
-                    log.info("Boundary : {}",areaReference);
+    public static void markVisitedForReservedArea(boolean[][] visited, Set<AreaReference> reservedAreas) {
+        for (AreaReference area : reservedAreas) {
+            // Get the top-left and bottom-right corners of the area
+            CellReference firstCell = area.getFirstCell();
+            CellReference lastCell = area.getLastCell();
+
+            // Get row and column indices
+            int startRow = firstCell.getRow();
+            int endRow = lastCell.getRow();
+            int startCol = firstCell.getCol();
+            int endCol = lastCell.getCol();
+
+            // Mark the corresponding cells in the visited array
+            for (int row = startRow; row <= endRow; row++) {
+                for (int col = startCol; col <= endCol; col++) {
+                    visited[row][col] = true;
                 }
             }
         }

@@ -1,6 +1,7 @@
 package com.example.excel_parser.service;
 
 import com.example.excel_parser.utils.DataTypeUtils;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.util.AreaReference;
@@ -8,20 +9,41 @@ import org.apache.poi.ss.util.CellReference;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
+@Slf4j
 public class RectangleDetector {
 
-    public static List<int[][]> detectRectangles(XSSFSheet sheet, AreaReference areaReference) {
-        CellReference firstCell = areaReference.getFirstCell();
-        CellReference lastCell = areaReference.getLastCell();
+    public static Set<AreaReference> getRangesAreaReference(XSSFSheet sheet, boolean[][] visited) {
+        Set<AreaReference> areaReferences = new HashSet<>();
 
-        int startRowIdx = firstCell.getRow();
-        int endRowIdx = lastCell.getRow();
-        int startColIdx = firstCell.getCol();
-        int endColIdx = lastCell.getCol();
+        List<int[][]> rectangles = getRangesBoundary(sheet,visited);
 
-        boolean[][] visited = new boolean[endRowIdx - startRowIdx + 1][endColIdx - startColIdx + 1];
+        for (int[][] rectangle : rectangles) {
+            // corners point
+            int topLeftRow = rectangle[0][0],bottomRightRow = rectangle[1][0];
+            int topLeftCol = rectangle[0][1],bottomRightCol = rectangle[1][1];
+
+            // Create CellReferences
+            CellReference topLeft = new CellReference(topLeftRow, topLeftCol);
+            CellReference bottomRight = new CellReference(bottomRightRow, bottomRightCol);
+
+            // Create AreaReference
+            AreaReference areaReference = new AreaReference(topLeft, bottomRight, sheet.getWorkbook().getSpreadsheetVersion());
+            areaReferences.add(areaReference);
+        }
+
+        return areaReferences;
+    }
+
+    public static List<int[][]> getRangesBoundary(XSSFSheet sheet,boolean[][] visited) {
+        int startRowIdx = 0;
+        int endRowIdx = sheet.getDimension().getLastRow();
+        int startColIdx = 0;
+        int endColIdx = sheet.getDimension().getLastColumn();
+
         List<int[][]> rectangles = new ArrayList<>();
 
         // Traverse each row
