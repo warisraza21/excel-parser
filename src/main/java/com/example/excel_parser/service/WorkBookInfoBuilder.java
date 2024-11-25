@@ -151,7 +151,7 @@ public class WorkBookInfoBuilder {
 
         List<NonTableInfo> nonTables = new ArrayList<>();
         if(!list.isEmpty()){
-            ProcessedSheet processedSheet =  ClusterCells.clusterCellsData(list);
+            ProcessedSheet processedSheet =  ClusterCells.clusterCellsData(list,sheet);
 
             processedSheet.tableData().forEach(table -> {
                 NonTableInfo nonTableInfo = createNonTableInfo(table);

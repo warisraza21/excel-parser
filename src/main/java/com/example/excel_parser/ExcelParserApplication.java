@@ -17,9 +17,9 @@ public class ExcelParserApplication {
 	public static void main(String[] args) throws JsonProcessingException {
 
 
-		String filePath = "src/main/resources/static/test.xlsx";
+		String filePath = "src/main/resources/static/example.xlsx";
 		SpringApplication.run(ExcelParserApplication.class, args);
-//		ExcelReader.testExcel(filePath);
-		log.info("WorkBookInfo : {}", objectMapper.writeValueAsString(WorkBookInfoBuilder.buildWorkBookInfo(filePath)));
+		ExcelReader.testExcel(filePath);
+//		log.info("WorkBookInfo : {}", objectMapper.writeValueAsString(WorkBookInfoBuilder.buildWorkBookInfo(filePath)));
 	}
 }

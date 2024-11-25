@@ -3,6 +3,8 @@ package com.example.excel_parser.model;
 import com.example.excel_parser.dtos.CellRangeInfo;
 import com.example.excel_parser.dtos.ColumnInfo;
 import lombok.Data;
+import org.apache.poi.ss.util.AreaReference;
+import org.apache.poi.ss.util.CellReference;
 
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -14,6 +16,9 @@ public class TableData implements Serializable {
     private int rowCount;
     private int columnCount;
     private CellRangeInfo boundaries;
+    private AreaReference areaReference;
+    private int[] firstCell = new int[2];
+    private int[] lastCell = new int[2];
     private List<ColumnInfo> columns = new ArrayList<>();
     private  final List<CellData> cells = new ArrayList<>();
 

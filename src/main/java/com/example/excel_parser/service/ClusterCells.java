@@ -9,7 +9,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.math3.ml.clustering.Cluster;
 import org.apache.commons.math3.ml.clustering.DBSCANClusterer;
 import org.apache.commons.math3.ml.clustering.DoublePoint;
+import org.apache.poi.ss.util.AreaReference;
 import org.apache.poi.ss.util.CellReference;
+import org.apache.poi.xssf.usermodel.XSSFSheet;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -21,7 +23,7 @@ import java.util.*;
 public class ClusterCells {
 
     // Step 2: Process sheet into structured and unstructured data
-    public static ProcessedSheet clusterCellsData(List<CellData> cells) {
+    public static ProcessedSheet clusterCellsData(List<CellData> cells, XSSFSheet sheet) {
         // Convert cells to points for clustering
         List<DoublePoint> points = new ArrayList<>();
         for (CellData cell : cells) {
@@ -44,7 +46,7 @@ public class ClusterCells {
                         .findFirst().ifPresent(table::addCell);
             }
             if(!table.getCells().isEmpty()){
-                calculateBoundary(table);
+                calculateBoundary(table,sheet);
             }
             tables.add(table);
         }
@@ -60,7 +62,7 @@ public class ClusterCells {
 
         return new ProcessedSheet(tables, nonTableData);
     }
-    private static void calculateBoundary(TableData table) {
+    private static void calculateBoundary(TableData table,XSSFSheet sheet) {
         int minRow = Integer.MAX_VALUE, maxRow = Integer.MIN_VALUE;
         int minCol = Integer.MAX_VALUE, maxCol = Integer.MIN_VALUE;
 
@@ -79,10 +81,17 @@ public class ClusterCells {
         table.setRowCount(maxRow - minRow + 1); // Inclusive range
         table.setColumnCount(maxCol - minCol + 1); // Inclusive range
 
+        int[] firstCell = table.getFirstCell();
+        firstCell[0] = minRow; firstCell[1] = minCol;
+
+        int[] lastCell = table.getLastCell();
+        lastCell[0] = maxRow; lastCell[1] = maxCol;
+
         // Use CellReference for boundary representation
         CellReference startCell = new CellReference(minRow, minCol);
         CellReference endCell = new CellReference(maxRow, maxCol);
         table.setBoundaries(new CellRangeInfo(startCell.formatAsString(), endCell.formatAsString()));
+        table.setAreaReference(new AreaReference(startCell,endCell,sheet.getWorkbook().getSpreadsheetVersion()));
     }
 
 }
