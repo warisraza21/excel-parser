@@ -4,6 +4,8 @@ import com.example.excel_parser.model.CellData;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellType;
 import org.apache.poi.ss.usermodel.DateUtil;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.xssf.usermodel.XSSFSheet;
 
 import java.math.BigDecimal;
 import java.text.ParseException;
@@ -150,6 +152,27 @@ public class DataTypeUtils {
             default:
                 cellData.setDataType(CellType._NONE.name());
                 break;
+        }
+    }
+
+    // Utility method to retrieve cell values from the sheet
+    public static String getCellValue(XSSFSheet sheet, int rowIdx, int colIdx) {
+        Row row = sheet.getRow(rowIdx);
+        if (row == null) return null;
+        Cell cell = row.getCell(colIdx);
+        if (cell == null) return null;
+
+        switch (cell.getCellType()) {
+            case STRING:
+                return cell.getStringCellValue();
+            case NUMERIC:
+                return String.valueOf(cell.getNumericCellValue());
+            case BOOLEAN:
+                return String.valueOf(cell.getBooleanCellValue());
+            case FORMULA:
+                return cell.getCellFormula();
+            default:
+                return "";
         }
     }
 }
