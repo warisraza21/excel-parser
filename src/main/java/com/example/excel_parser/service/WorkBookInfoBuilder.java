@@ -134,7 +134,7 @@ public class WorkBookInfoBuilder {
         return tables;
     }
 
-    private static List<NonTableInfo> extractNonTables(XSSFSheet sheet) {
+    public static List<NonTableInfo> extractNonTables(XSSFSheet sheet) {
 
         List<AreaReference> reservedAreas = getReservedAreas(sheet,sheet.getWorkbook().getSpreadsheetVersion());
 
@@ -462,7 +462,7 @@ public class WorkBookInfoBuilder {
             cellData = new CellData(cell.getRowIndex(), cell.getColumnIndex());
             if (cell.getCellType() == CellType.FORMULA) {
                 cellData.setFormula(cell.getCellFormula());
-                cellData.setValue(getCellValue(formulaEvaluator.evaluateInCell(cell)));
+//                cellData.setValue(getCellValue(formulaEvaluator.evaluateInCell(cell)));
             } else {
                 cellData.setValue(getCellValue(cell));
             }
