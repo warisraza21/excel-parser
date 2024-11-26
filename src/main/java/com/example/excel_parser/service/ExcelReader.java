@@ -1,9 +1,6 @@
 package com.example.excel_parser.service;
 
-import com.example.excel_parser.model.CellData;
-import com.example.excel_parser.model.ProcessedSheet;
-import com.example.excel_parser.model.TableData;
-import com.example.excel_parser.model.NonTableData;
+import com.example.excel_parser.model.*;
 import com.example.excel_parser.utils.DataTypeUtils;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -46,13 +43,30 @@ public class ExcelReader {
                 Set<AreaReference> reservedAreas = getAreaReferenceForTableAndPivotTable(xssfSheet, workbook.getSpreadsheetVersion());
                 reservedAreas.forEach(areaReference -> log.info("Reserved Area : {}",areaReference));
 
-                int row = xssfSheet.getDimension().getLastRow() + 1;
-                int col = xssfSheet.getDimension().getLastColumn() + 1;
-                boolean[][] visited = new boolean[row][col];
+                int rowCount = xssfSheet.getDimension().getLastRow() + 1;
+                int colCount = xssfSheet.getDimension().getLastColumn() + 1;
 
+                boolean[][] visited = new boolean[rowCount][colCount];
                 markVisitedForReservedArea(visited,reservedAreas);
-                Set<AreaReference> rangesAreaReference = RectangleDetector.getRangesAreaReference(xssfSheet,visited);
-                rangesAreaReference.forEach(areaReference -> log.info("Range Area : {}",areaReference));
+
+
+                List<CellData> list = new ArrayList<>();
+                for (Row row : xssfSheet) {
+                    for (Cell cell : row) {
+                        if (!isWithinReservedArea(cell, reservedAreas)) {
+                            CellData cellData = extractCellData(cell);
+                            if(cellData != null) list.add(cellData);
+                        }
+                    }
+                }
+
+                if(!list.isEmpty()) {
+                    ProcessedSheet processedSheet = ClusterCells.clusterCellsData(list, xssfSheet);
+                    processedSheet.tableData().forEach(tableData -> {
+                        Set<AreaReference> rangesAreaReference = RectangleDetector.getRangesAreaReference(xssfSheet,visited,tableData.getAreaReference());
+                        rangesAreaReference.forEach(areaReference -> log.info("Range Area : {}",areaReference));
+                    });
+                }
             }
         } catch (IOException e) {
             log.error("Error processing Excel file", e);
@@ -255,6 +269,21 @@ public class ExcelReader {
                 }
             }
         }
+    }
+
+    public static List<CellCoordinate> getUnvisitedCells(boolean[][] visited) {
+        List<CellCoordinate> unvisitedCells = new ArrayList<>();
+
+        for (int row = 0; row < visited.length; row++) {
+            for (int col = 0; col < visited[row].length; col++) {
+                if (!visited[row][col]) {
+                    // Create a CellCoordinate object for this unvisited cell
+                    unvisitedCells.add(new CellCoordinate(row, col));
+                }
+            }
+        }
+
+        return unvisitedCells;
     }
 
 }

@@ -16,10 +16,10 @@ import java.util.Set;
 @Slf4j
 public class RectangleDetector {
 
-    public static Set<AreaReference> getRangesAreaReference(XSSFSheet sheet, boolean[][] visited) {
+    public static Set<AreaReference> getRangesAreaReference(XSSFSheet sheet, boolean[][] visited,AreaReference areaReference) {
         Set<AreaReference> areaReferences = new HashSet<>();
 
-        List<int[][]> rectangles = getRangesBoundary(sheet,visited);
+        List<int[][]> rectangles = getRangesBoundary(sheet,visited,areaReference);
 
         for (int[][] rectangle : rectangles) {
             // corners point
@@ -31,18 +31,21 @@ public class RectangleDetector {
             CellReference bottomRight = new CellReference(bottomRightRow, bottomRightCol);
 
             // Create AreaReference
-            AreaReference areaReference = new AreaReference(topLeft, bottomRight, sheet.getWorkbook().getSpreadsheetVersion());
-            areaReferences.add(areaReference);
+            AreaReference newArea = new AreaReference(topLeft, bottomRight, sheet.getWorkbook().getSpreadsheetVersion());
+            areaReferences.add(newArea);
         }
 
         return areaReferences;
     }
 
-    public static List<int[][]> getRangesBoundary(XSSFSheet sheet,boolean[][] visited) {
-        int startRowIdx = 0;
-        int endRowIdx = sheet.getDimension().getLastRow();
-        int startColIdx = 0;
-        int endColIdx = sheet.getDimension().getLastColumn();
+    public static List<int[][]> getRangesBoundary(XSSFSheet sheet,boolean[][] visited, AreaReference areaReference) {
+        CellReference firstCell = areaReference.getFirstCell();
+        CellReference lastCell = areaReference.getLastCell();
+
+        int startRowIdx = firstCell.getRow();
+        int endRowIdx = lastCell.getRow();
+        int startColIdx = firstCell.getCol();
+        int endColIdx = lastCell.getCol();
 
         List<int[][]> rectangles = new ArrayList<>();
 
@@ -80,15 +83,15 @@ public class RectangleDetector {
         String[] prevRowValue = null;
         // Traverse vertically from the current row downwards
         while (currRowIdx <= globalEndRowIdx) {
-            if (prevRowValue == null) prevRowValue = getRowData(sheet, currRowIdx, startColIdx, endColIdx);
+            if (prevRowValue == null) prevRowValue = getRowData(sheet, currRowIdx, startColIdx, endColIdx,visited);
             else {
-                String[] currRowValue = getRowData(sheet, currRowIdx, startColIdx, endColIdx);
+                String[] currRowValue = getRowData(sheet, currRowIdx, startColIdx, endColIdx,visited);
                 if (currRowValue != null) {
                     if (!compareRowDataTypes(prevRowValue, currRowValue)) {
                         break;
                     }
                     prevRowValue = currRowValue;
-                }
+                }else break;
             }
             currRowIdx++;
         }
@@ -121,14 +124,20 @@ public class RectangleDetector {
 
 
     // New method to extract the data of a row within a specified column range (startColIdx to endColIdx)
-    private static String[] getRowData(XSSFSheet sheet, int rowIdx, int startColIdx, int endColIdx) {
+    private static String[] getRowData(XSSFSheet sheet, int rowIdx, int startColIdx, int endColIdx, boolean[][] visited) {
         Row row = sheet.getRow(rowIdx);
         if (row == null) return null;
+
         // Create an array for the specific column range
         String[] rowData = new String[endColIdx - startColIdx + 1];
 
         // Iterate through each column within the range and get the value
         for (int colIdx = startColIdx; colIdx <= endColIdx; colIdx++) {
+            // Check if the cell is marked as visited
+            if (visited[rowIdx][colIdx]) {
+                return null; // Stop processing as the row is invalid
+            }
+
             Cell cell = row.getCell(colIdx);
             if (cell != null) {
                 rowData[colIdx - startColIdx] = DataTypeUtils.getCellValue(sheet, rowIdx, colIdx);
@@ -136,6 +145,7 @@ public class RectangleDetector {
         }
         return rowData;
     }
+
 
     public static boolean compareRowDataTypes(String[] prevArr, String[] currArr) {
 

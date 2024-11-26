@@ -162,17 +162,25 @@ public class DataTypeUtils {
         Cell cell = row.getCell(colIdx);
         if (cell == null) return null;
 
-        switch (cell.getCellType()) {
-            case STRING:
-                return cell.getStringCellValue();
-            case NUMERIC:
-                return String.valueOf(cell.getNumericCellValue());
-            case BOOLEAN:
-                return String.valueOf(cell.getBooleanCellValue());
-            case FORMULA:
-                return cell.getCellFormula();
-            default:
-                return "";
-        }
+        return switch (cell.getCellType()) {
+            case STRING -> cell.getStringCellValue();
+            case NUMERIC -> String.valueOf(cell.getNumericCellValue());
+            case BOOLEAN -> String.valueOf(cell.getBooleanCellValue());
+            case FORMULA -> cell.getCellFormula();
+            default -> "";
+        };
+    }
+
+    public static boolean isCellNotEmpty(Cell cell) {
+        if (cell == null) return false;
+
+        // Check if the cell has a value
+        return switch (cell.getCellType()) {
+            case STRING -> cell.getStringCellValue() != null && !cell.getStringCellValue().trim().isEmpty();
+            case NUMERIC -> true;
+            case BOOLEAN -> true;
+            case FORMULA -> cell.getCellFormula() != null && !cell.getCellFormula().trim().isEmpty();
+            default -> false;
+        };
     }
 }

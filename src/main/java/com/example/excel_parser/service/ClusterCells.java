@@ -1,10 +1,7 @@
 package com.example.excel_parser.service;
 
 import com.example.excel_parser.dtos.CellRangeInfo;
-import com.example.excel_parser.model.CellData;
-import com.example.excel_parser.model.ProcessedSheet;
-import com.example.excel_parser.model.TableData;
-import com.example.excel_parser.model.NonTableData;
+import com.example.excel_parser.model.*;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.math3.ml.clustering.Cluster;
 import org.apache.commons.math3.ml.clustering.DBSCANClusterer;
